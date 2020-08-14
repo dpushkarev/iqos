@@ -1,0 +1,62 @@
+version: "3.7"
+services:
+  nginx:
+    build: ./nginx
+    container_name: ${COMPOSE_PROJECT_NAME}_nginx
+    image: ${COMPOSE_PROJECT_NAME}/nginx
+    depends_on:
+      - fpm
+    networks:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../www:/app:rw,cached
+      - ../logs/nginx:/var/log/nginx:rw,cached
+    environment:
+      - HOST=${HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+
+  mariadb:
+    container_name: ${COMPOSE_PROJECT_NAME}_mariadb
+    image: ${COMPOSE_PROJECT_NAME}/mariadb
+    networks:
+      - backend
+    build: ./mariadb
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - iqos_mariadb:/var/lib/mysql:rw,cached
+
+  fpm:
+    image: ${COMPOSE_PROJECT_NAME}/fpm
+    container_name: ${COMPOSE_PROJECT_NAME}_fpm
+    build: ./fpm
+    depends_on:
+      - mariadb
+    networks:
+      - backend
+    volumes:
+      - ../www:/app:rw,cached
+      - ../logs/php:/var/log/php7.2-fpm:rw,cached
+    environment:
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASS=${DB_PASSWORD}
+      - MYSQL_DB=${DB_NAME}
+
+networks:
+  frontend:
+  backend:
+
+volumes:
+  iqos_mariadb:
+    external: true
